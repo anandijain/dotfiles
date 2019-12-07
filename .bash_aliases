@@ -39,7 +39,27 @@ function lazygit() {
     git push
 }
 
+function swap_pull_swap(){
+	git checkout "$1"
+	git pull
+	git branch "$2"
+	git checkout "$2"
+}
 
+function clean_branches(){
+	git branch -d $(git branch --merged=master | grep -v master)
+	git fetch --prune
+}
+
+function micro_la(){
+	gcloud beta compute --project "absa-242603" ssh --zone "us-west2-a" "micro-la"
+}
+
+function micro_lon(){
+	gcloud beta compute --project "absa-242603" ssh --zone "europe-west2-c" "micro-lon"
+}
+
+alias jl='julia'
 alias py='python'
 alias pip='pip3.6'
 alias chrome='google-chrome'
@@ -47,7 +67,6 @@ alias blender='/home/sippycups/Downloads/Applications/blender-2.80-linux-glibc21
 alias unity='/home/sippycups/Programming/Unity/UnityHubSetup.AppImage'
 alias tor='~/learning/bash/open_tor.sh'
 alias h='history'
-
 
 # Git related
 alias gs='git status'
@@ -60,7 +79,8 @@ alias gsb='git show-branch'
 alias gco='git checkout'
 alias lg='lazygit'
 alias cmt='commit'
-
+alias cleen='clean_branches'
+alias swap='swap_pull_swap'
 
 # Add color in manpages for less
 export LESS_TERMCAP_mb=$'\E[01;31m'
@@ -71,3 +91,6 @@ export LESS_TERMCAP_so=$'\E[01;44;33m'
 export LESS_TERMCAP_ue=$'\E[0m'
 export LESS_TERMCAP_us=$'\E[01;32m'
 
+export PATH=$PATH:/usr/local/go/bin
+export GOPATH=$HOME/programming/go
+alias lean='/home/sippycups/Downloads/langs/lean-3.4.2-linux/bin/lean'
