@@ -1,30 +1,22 @@
 using Revise
+using Pkg, Downloads, Test, TOML, Base.Threads, LinearAlgebra, Dates
+using BenchmarkTools, CodeTracking
+using TimerOutputs, OhMyREPL
 using SaveREPL
-using Pkg
-using BenchmarkTools
-using CodeTracking
-# using Debugger
-using Test
-using Downloads
-# using JSON3
-
-using AbstractTrees
 using MyExportAll
-using TimerOutputs
-using TOML
-using OhMyREPL
-using Base.Threads
+
+# using Debugger, Cthulhu
+# using JSON3, CSV, DataFrames
+# using AbstractTrees
 
 OhMyREPL.enable_autocomplete_brackets(false)
-# using CSV, DataFrames
 
-ENV["JULIA_PKG_SERVER"] = "https://internal.juliahub.com"
-# ENV["JULIA_PKG_SERVER"] = "https://pumasai.juliahub.com/"
+# ENV["JULIA_PKG_SERVER"] = "https://internal.juliahub.com"
 
-Base.eval(Module(), quote
-    using PkgAuthentication
-    PkgAuthentication.install()
-end)
+# Base.eval(Module(), quote
+#     using PkgAuthentication
+#     PkgAuthentication.install()
+# end)
 
 "copies versioninfo() and Pkg.status() to clipboard"
 function mwe(; clip=true, verbose=false)
@@ -47,7 +39,11 @@ end
 
 function ytdl(id)
     cd(joinpath(homedir(), "Music/ytdl/"))
-    run(`youtube-dl -f140 -x "https://www.youtube.com/watch?v=$id"`)
+    if startswith(id, "https")
+        run(`yt-dlp -f140 -x "$id"`)
+    else
+        run(`yt-dlp -f140 -x "https://www.youtube.com/watch?v=$id"`)
+    end
 end
 
 get_site(url) = take!(Downloads.download(url, IOBuffer()))
@@ -275,15 +271,15 @@ function dev_activate(pkg_name)
     # Pkg.develop(pkg_name)
     Pkg.activate(p)
 end
-function find_dev(pkg_name)
+function dev_find(pkg_name)
     p = joinpath(Pkg.devdir(), pkg_name)
-    p2 = p * ".jl"
     isdir(p) && return p
-    is(dir, p2) && return p2
+    p2 = p * ".jl"
+    isdir(p2) && return p2
     nothing
 end
-function open_dev(pkg_name)
-    p = find_dev(pkg_name)
+function dev_open(pkg_name)
+    p = dev_find(pkg_name)
     isnothing(p) && error("Package not found")
     run(`code $p`)
 end
@@ -296,7 +292,7 @@ function Pkg.dependencies(package::AbstractString)
     return Pkg.dependencies()[Pkg.project().dependencies[package]].dependencies
 end
 
-_js() = run(`open "/Users/anand/.julia/config/startup.jl"`)
+_js() = run(`open "$(homedir())/.julia/config/startup.jl"`)
 const LORENZ_EXPR = Base.remove_linenums!(
     :(
         # using DifferentialEquations, ModelingToolkit
@@ -322,6 +318,12 @@ eqs = [D(x) ~ sig * (y - x),
     D(y) ~ x * (rho - z) - y,
     D(z) ~ x * y - beta * z]
 sys = ODESystem(eqs; tspan=(0, 100), name=:lorenz)
+"""
+
+const SOLVE_LORENZ_STR = """
+ssys = structural_simplify(sys)
+prob = ODEProblem(ssys)
+sol = solve(prob)
 """
 
 _WL_LORENZ = """
@@ -357,7 +359,7 @@ function eval_kwargs(nt)
     end
 end
 
-AbstractTrees.children(x::DataType) = subtypes(x)
+# AbstractTrees.children(x::DataType) = subtypes(x)
 
 
 # fs = [:first, :only, :last]
@@ -365,3 +367,16 @@ AbstractTrees.children(x::DataType) = subtypes(x)
 #     sym = Symbol(:try_, f)
 #     @eval $sym(xs) = isempty(xs) ? nothing : Base.$f(xs)
 # end
+
+sortl(xs) = sort(xs; by=last, rev=true)
+sortl!(xs) = sort!(xs; by=last, rev=true)
+function tally(vec) 
+    sortl!(collect(countmap(vec)))
+end
+
+function calculate_minimum_rtol(x, y)
+    d = norm(x - y)
+    m = max(norm(x), norm(y))
+    d / m
+end
+code(p) = run(`code $p`)

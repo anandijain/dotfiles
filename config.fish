@@ -1,4 +1,7 @@
-eval "$(/opt/homebrew/bin/brew shellenv)"
+fish_add_path "/Users/anand/.juliaup/bin"
+if status is-interactive
+    # Commands to run in interactive sessions can go here
+end
 export JULIA_NUM_THREADS=8
 alias j="julia"
 alias jp="julia --project"
@@ -11,13 +14,3 @@ alias jdbg="JULIA_DEBUG=loading julia --startup=no --project"
 alias ju="juliaup"
 
 alias la="ls -la"
-
-alias matlab="/Applications/MATLAB_R2022b.app/bin/matlab -nosplash -nodesktop"
-export JL_MATLAB_PATH="/Applications/MATLAB_R2022b.app/bin/matlab"
-jg () {
-	jd 
-	julia -e '
-    jg()
-	' $1
-}
-
