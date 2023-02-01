@@ -4,7 +4,6 @@ using BenchmarkTools, CodeTracking
 using TimerOutputs, OhMyREPL
 using SaveREPL
 using MyExportAll
-
 # using Debugger, Cthulhu
 # using JSON3, CSV, DataFrames
 using InvertedIndices
@@ -12,6 +11,7 @@ using InvertedIndices
 
 OhMyREPL.enable_autocomplete_brackets(false)
 
+ENV["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin"
 # ENV["JULIA_PKG_SERVER"] = "https://internal.juliahub.com"
 
 # Base.eval(Module(), quote
@@ -36,7 +36,7 @@ function mwe(; clip=true, verbose=false)
 
     ```
     trace:
-    ```
+    ```julia
 
     ```
 

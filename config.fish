@@ -1,5 +1,6 @@
 fish_add_path "/Users/anand/.juliaup/bin"
 fish_add_path "/opt/homebrew/bin/"
+fish_add_path "/Users/anand/.cargo/bin/"
 if status is-interactive
     # Commands to run in interactive sessions can go here
 end
