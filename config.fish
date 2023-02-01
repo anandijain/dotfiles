@@ -1,4 +1,5 @@
 fish_add_path "/Users/anand/.juliaup/bin"
+fish_add_path "/opt/homebrew/bin/"
 if status is-interactive
     # Commands to run in interactive sessions can go here
 end
@@ -14,3 +15,8 @@ alias jdbg="JULIA_DEBUG=loading julia --startup=no --project"
 alias ju="juliaup"
 
 alias la="ls -la"
+alias pip="pip3.10"
+alias python="python3.10"
+alias e="nvim"
+alias matlab="/Applications/MATLAB_R2022b.app/bin/matlab -nosplash -nodesktop"
+

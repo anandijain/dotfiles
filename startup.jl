@@ -1,5 +1,5 @@
 using Revise
-using Pkg, Downloads, Test, TOML, Base.Threads, LinearAlgebra, Dates
+using Pkg, Downloads, Test, TOML, Base.Threads, Dates # LinearAlgebra
 using BenchmarkTools, CodeTracking
 using TimerOutputs, OhMyREPL
 using SaveREPL
@@ -7,6 +7,7 @@ using MyExportAll
 
 # using Debugger, Cthulhu
 # using JSON3, CSV, DataFrames
+using InvertedIndices
 # using AbstractTrees
 
 OhMyREPL.enable_autocomplete_brackets(false)
@@ -18,18 +19,39 @@ OhMyREPL.enable_autocomplete_brackets(false)
 #     PkgAuthentication.install()
 # end)
 
+function vi(io=IOBuffer())
+    versioninfo(io)
+    String(take!(io))
+end
+
 "copies versioninfo() and Pkg.status() to clipboard"
 function mwe(; clip=true, verbose=false)
     io = IOBuffer()
-    versioninfo(io)
-    s = String(take!(io))
-    Pkg.status(; io=io)
+    s = vi(io)
+    Pkg.status(; io, mode=PKGMODE_MANIFEST)
     s2 = String(take!(io))
     str = """
+    mwe:
+    ```julia
+
+    ```
+    trace:
+    ```
+
+    ```
+
+    versioninfo():
     ```julia
     $(s)
+
+    ```
+    <details>
+    <summary>Manifest</summary>
+    
+    ```julia
     $(s2)
     ```
+  </details>
     """
     clip && clipboard(str)
     verbose && print(str)
@@ -63,6 +85,19 @@ function goodbad(f, xs; verbose=false)
         end
     end
     good, bad
+end
+
+"when switching versions its annoying to have to readd everything, this generates the command to paste into a new version"
+function startup_pkgs()
+    deps = Pkg.dependencies()
+    xs = map(x -> deps[x], values(Pkg.project().dependencies))
+    locals = findall(x -> x.is_tracking_path, xs)
+    ls = map(x->x.source, xs[locals])
+    ns = map(x -> x.name, xs[Not(locals)])
+    s = "pkg\"add " * join(ns, " ") * "\"; pkg\"dev " * join(ls, " ") * '"'
+    clipboard(s)
+    print(s)
+    s
 end
 
 # for fname in [:clipboard, :size, :typeof]
@@ -124,7 +159,7 @@ end
 
 # macro da(ex)
 #     p = joinpath(Pkg.devdir(), $ex)
-    
+
 # end
 # macro w(ex)
 #     @which ex
@@ -225,6 +260,9 @@ function jg(name=ARGS[1])
     mkpath(".github/workflows/")
     mkpath("test")
     touch("test/runtests.jl")
+    touch("README.md")
+    touch(".gitignore")
+    mkpath("data")
     ci_path = joinpath(homedir(), ".julia/jd/CI.yml")
     cp(ci_path, ".github/workflows/CI.yml")
     proj_file = Base.active_project()
@@ -264,6 +302,12 @@ allapprox(itr; kws...) = isempty(itr) ? true : all(isapprox(first(itr); kws...),
 supertypest(x) = supertypes(typeof(x))
 
 struct_to_arr(x) = getfield.(Ref(x), fieldnames(typeof(x)))
+proparr(x) = getproperty.((x,), propertynames(x))
+function prop_pairs(x)
+    ps = propertynames(x)
+    ps .=> getproperty.((x,), ps)
+end
+to_nt(x) = NamedTuple(prop_pairs(x))
 
 function dev_activate(pkg_name)
     p = joinpath(Pkg.devdir(), pkg_name)
@@ -370,7 +414,7 @@ end
 
 sortl(xs) = sort(xs; by=last, rev=true)
 sortl!(xs) = sort!(xs; by=last, rev=true)
-function tally(vec) 
+function tally(vec)
     sortl!(collect(countmap(vec)))
 end
 
@@ -379,4 +423,47 @@ function calculate_minimum_rtol(x, y)
     m = max(norm(x), norm(y))
     d / m
 end
+
 code(p) = run(`code $p`)
+
+function time_imports_str_to_df(s)
+    s = strip(s)
+    ls = strip.(split(s, "\n"))
+    cols = split.(ls, "  ")
+    df = DataFrame(time=Float64[], unit=String[], pkg=String[], comp=Union{Missing,String}[])
+    for (i, col) in enumerate(cols)
+        time = first(col)
+        time, unit = split(time, " ")
+        time = parse(Float64, time)
+        pkg_and_comp = last(col)
+        foo = split(pkg_and_comp, " "; limit=2)
+        length(foo) == 1 ? (pkg, comp) = (foo[1], missing) : (pkg, comp) = foo
+        row = vec([time unit pkg comp])
+        push!(df, row)
+    end
+    sort!(df, :time; rev=true)
+    df
+end
+
+function precomp_time_str_to_df(s)
+    s = strip(s)
+    ss = strip.(split(s, "\n")[2:end-1])
+    df = DataFrame(parse_precomp_time_row.(ss))
+    sort!(df, :time;rev=true)
+    df
+end
+
+function parse_precomp_time_row(l)
+    ms = collect(eachmatch(Base.ansi_regex, l))
+    j = join(filter(x -> length(x) == 1, map(x -> x.match, ms)))
+    xs = split(j)
+    time, check = xs[[1, 3]]
+    time = parse(Float64, time)
+    if length(xs) == 6
+        name, extname = xs[[4, 6]]
+    else
+        name = xs[4]
+        extname = missing
+    end
+    (; time, check, name, extname)
+end
