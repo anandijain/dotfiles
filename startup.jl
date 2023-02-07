@@ -11,7 +11,7 @@ using InvertedIndices
 
 OhMyREPL.enable_autocomplete_brackets(false)
 
-ENV["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin"
+ENV["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/Users/anand/.juliaup/bin"
 # ENV["JULIA_PKG_SERVER"] = "https://internal.juliahub.com"
 
 # Base.eval(Module(), quote
@@ -466,4 +466,14 @@ function parse_precomp_time_row(l)
         extname = missing
     end
     (; time, check, name, extname)
+end
+
+
+cv(x) = collect(values(x))
+ck(x) = collect(keys(x))
+getd(d, xs) = map(x->d[x], xs)
+unzip(xs) = first.(xs), last.(xs)
+function unzip(d::Dict)
+    xs = collect(d)
+    first.(xs), last.(xs)
 end
