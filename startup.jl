@@ -93,10 +93,11 @@ function startup_pkgs()
     xs = map(x -> deps[x], values(Pkg.project().dependencies))
     locals = findall(x -> x.is_tracking_path, xs)
     repos = findall(x -> x.is_tracking_repo, xs)
-    ls = map(x->x.source, xs[locals])
+    # ls = map(x->x.source, xs[locals])
     rs = map(x->x.git_source, xs[repos])
     ns = map(x -> x.name, xs[Not(union(locals, repos))])
-    s = "pkg\"add " * join(ns, " ") * "\"; pkg\"dev " * join([ls;rs], " ") * '"'
+    # loc_part = "\"; pkg\"dev " * join([ls;rs], " ") *
+    s = "pkg\"add " * join(ns, " ") *  "\"; pkg\"add " * join(rs, " ") * '"'
     clipboard(s)
     print(s)
     s
