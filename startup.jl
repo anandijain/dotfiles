@@ -1,12 +1,15 @@
 using Revise
 using Pkg, Downloads, Test, TOML, Base.Threads, Dates # LinearAlgebra
-using BenchmarkTools, CodeTracking
+using CodeTracking#, BenchmarkTools (repeated recompilation problem)
 using TimerOutputs, OhMyREPL
-using SaveREPL
-using MyExportAll
-# using Debugger, Cthulhu
+using SaveREPL, MyExportAll, SubmodTree
+# using Debugger, Cthulhu, JET, Aqua
 # using JSON3, CSV, DataFrames
 using InvertedIndices
+using DefaultApplication
+using TestEnv
+using NamedTupleTools
+using ProgressMeter
 # using AbstractTrees
 
 OhMyREPL.enable_autocomplete_brackets(false)
@@ -87,6 +90,25 @@ function goodbad(f, xs; verbose=false)
     good, bad
 end
 
+function goodbadt(f, xs; verbose=false)
+    n = length(xs)
+    p = Progress(n)
+
+    good = []
+    bad = []
+    Threads.@threads for (i, x) in collect(enumerate(xs))
+        verbose && @info x
+        try
+            y = f(x)
+            push!(good, (i, x) => y)
+        catch e
+            push!(bad, (i, x) => e)
+        end
+        next!(p)
+    end
+    good, bad
+end
+
 "when switching versions its annoying to have to readd everything, this generates the command to paste into a new version"
 function startup_pkgs()
     deps = Pkg.dependencies()
@@ -94,10 +116,10 @@ function startup_pkgs()
     locals = findall(x -> x.is_tracking_path, xs)
     repos = findall(x -> x.is_tracking_repo, xs)
     # ls = map(x->x.source, xs[locals])
-    rs = map(x->x.git_source, xs[repos])
+    rs = map(x -> x.git_source, xs[repos])
     ns = map(x -> x.name, xs[Not(union(locals, repos))])
     # loc_part = "\"; pkg\"dev " * join([ls;rs], " ") *
-    s = "pkg\"add " * join(ns, " ") *  "\"; pkg\"add " * join(rs, " ") * '"'
+    s = "pkg\"add " * join(ns, " ") * "\"; pkg\"add " * join(rs, " ") * '"'
     clipboard(s)
     print(s)
     s
@@ -303,6 +325,7 @@ _add_toml_field!(t, k; T=Dict{String,Any}) = haskey(t, k) || (t[k] = T())
 allapprox(itr; kws...) = isempty(itr) ? true : all(isapprox(first(itr); kws...), itr)
 
 supertypest(x) = supertypes(typeof(x))
+supertypestn(x) = nameof.(supertypes(typeof(x)))
 
 struct_to_arr(x) = getfield.(Ref(x), fieldnames(typeof(x)))
 proparr(x) = getproperty.((x,), propertynames(x))
@@ -452,7 +475,7 @@ function precomp_time_str_to_df(s)
     s = strip(s)
     ss = strip.(split(s, "\n")[2:end-1])
     df = DataFrame(parse_precomp_time_row.(ss))
-    sort!(df, :time;rev=true)
+    sort!(df, :time; rev=true)
     df
 end
 
@@ -474,9 +497,18 @@ end
 
 cv(x) = collect(values(x))
 ck(x) = collect(keys(x))
-getd(d, xs) = map(x->d[x], xs)
+getd(d, xs) = map(x -> d[x], xs)
 unzip(xs) = first.(xs), last.(xs)
 function unzip(d::Dict)
     xs = collect(d)
     first.(xs), last.(xs)
 end
+
+_datadir() = joinpath(dirname(Base.active_project()), "data")
+_data(s) = joinpath(datadir, s)
+opend = DefaultApplication.open
+
+"these are good if you want to explore jsonpaths or convert `.mat` to componentarrays or something with a `.` getfield"
+recursive_namedtuple(x::Any) = x
+recursive_namedtuple(xs::AbstractArray) = map(recursive_namedtuple, xs)
+recursive_namedtuple(d::Dict) = namedtuple(Dict(k => recursive_namedtuple(v) for (k, v) in d))
