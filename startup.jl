@@ -23,6 +23,7 @@ ENV["PATH"] = "/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:/Users/anand/.jul
 #     using PkgAuthentication
 #     PkgAuthentication.install()
 # end)
+const STARTUP_PATH = "$(homedir())/.julia/config/startup.jl"
 
 function vi(io=IOBuffer())
     versioninfo(io)
@@ -366,7 +367,6 @@ function Pkg.dependencies(package::AbstractString)
     return Pkg.dependencies()[Pkg.project().dependencies[package]].dependencies
 end
 
-_js() = run(`open "$(homedir())/.julia/config/startup.jl"`)
 const LORENZ_EXPR = Base.remove_linenums!(
     :(
         # using DifferentialEquations, ModelingToolkit
@@ -535,6 +535,8 @@ function open_in_default_browser(url::AbstractString)::Bool
         false
     end
 end
+
+_js() = DefaultApplication.open(STARTUP_PATH)
 
 function _init_reg!(reg)
     Pkg.Registry.create_name_uuid_mapping!(reg)
