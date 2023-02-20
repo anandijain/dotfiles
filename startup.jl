@@ -10,6 +10,8 @@ using DefaultApplication
 using TestEnv
 using NamedTupleTools
 using ProgressMeter
+using UUIDs
+using Pkg.Registry
 # using AbstractTrees
 
 OhMyREPL.enable_autocomplete_brackets(false)
@@ -27,7 +29,9 @@ function vi(io=IOBuffer())
     String(take!(io))
 end
 
-"copies versioninfo() and Pkg.status() to clipboard"
+"copies versioninfo() and Pkg.status() to clipboard.
+it would be cool to have this use `current_exceptions` and `gh` 
+"
 function mwe(; clip=true, verbose=false)
     io = IOBuffer()
     s = vi(io)
@@ -102,7 +106,7 @@ function goodbadt(f, xs; verbose=false)
             y = f(x)
             push!(good, (i, x) => y)
         catch e
-            push!(bad, (i, x) => e)
+            push!(bad, (i, x) => (e, current_exceptions()))
         end
         next!(p)
     end
@@ -505,10 +509,41 @@ function unzip(d::Dict)
 end
 
 _datadir() = joinpath(dirname(Base.active_project()), "data")
-_data(s) = joinpath(datadir, s)
+_data(s) = joinpath(_datadir(), s)
 opend = DefaultApplication.open
 
 "these are good if you want to explore jsonpaths or convert `.mat` to componentarrays or something with a `.` getfield"
 recursive_namedtuple(x::Any) = x
 recursive_namedtuple(xs::AbstractArray) = map(recursive_namedtuple, xs)
 recursive_namedtuple(d::Dict) = namedtuple(Dict(k => recursive_namedtuple(v) for (k, v) in d))
+
+function open_in_default_browser(url::AbstractString)::Bool
+    try
+        if Sys.isapple()
+            Base.run(`open $url`)
+            true
+        elseif Sys.iswindows() || detectwsl()
+            Base.run(`powershell.exe Start "'$url'"`)
+            true
+        elseif Sys.islinux()
+            Base.run(`xdg-open $url`)
+            true
+        else
+            false
+        end
+    catch ex
+        false
+    end
+end
+
+function _init_reg!(reg)
+    Pkg.Registry.create_name_uuid_mapping!(reg)
+    map(x -> Pkg.Registry.init_package_info!(last(x)), collect(reg.pkgs))
+end
+
+function open_repo(s)
+REGISTRIES = Pkg.Registry.reachable_registries()
+    GENERAL_REGISTRY = REGISTRIES[findfirst(reg.name == "General" for reg in REGISTRIES)]
+    _init_reg!(GENERAL_REGISTRY)
+    open_in_default_browser(GENERAL_REGISTRY.pkgs[findfirst(x->x.name == s, GENERAL_REGISTRY.pkgs)].info.repo)
+end
